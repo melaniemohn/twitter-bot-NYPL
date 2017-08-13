@@ -1,0 +1,22 @@
+{
+  "name": "twitter-oldnyc",
+  "version": "1.0.0",
+  "description": "I tweet daily photos from the NYPL digital collection.",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/melaniemohn/twitter-oldNYC.git"
+  },
+  "author": "Melanie Mohn",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/melaniemohn/twitter-oldNYC/issues"
+  },
+  "homepage": "https://github.com/melaniemohn/twitter-oldNYC#readme",
+  "dependencies": {
+    "twit": "^2.2.9"
+  }
+}
