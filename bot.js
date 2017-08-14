@@ -10,15 +10,15 @@ const NYPLkey = config.nypl.key;
 // setInterval(tweeter, 1000*60*60*24);
 
 // send first tweet! for now, alternating between 'Testing, testing...' and 'Oh, hey world!'
-Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
-  console.log('Posting our first Tweet...!');
-  if (err) console.error(err);
-  console.log('I just tweeted: ', data.text);
-});
+// Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
+//   console.log('Posting our first Tweet...!');
+//   if (err) console.error(err);
+//   console.log('I just tweeted: ', data.text);
+// });
 
-// use Fetch API to access NYPL API route
 function getInitialData() {
   // eventually change URL parameters to get all items in single request
+  // also, IMPORTANT: probably going to want to return fetch instead of just calling it
   fetch('http://api.repo.nypl.org/api/v1/items/search?q=b13668355&per_page=2', {
     headers: {
       Authorization: NYPLkey
@@ -72,17 +72,18 @@ function toBase64(url) {
 }
 
 
-function uploadAndPostMedia(media) {
+function uploadAndPostMedia(media, text) { // pass a second parameter here for altText??
   Twitter.post('media/upload', { media_data: media }, function (err, data, response) {
     if (err) console.error('Error processing upload: ', err);
     let mediaID = data.media_id_string;
-    let altText = 'ALT TEXT HERE'; // MPM: pull alt text from image description
+    let altText = text; // MPM: pull alt text from image description
     let metadata = { media_id: mediaID, alt_text: { text: altText } };
 
     Twitter.post('media/metadata/create', metadata, function (err, data, response) {
       if (!err) {
         // now post a tweet with reference to the media (media will attach to the tweet)
-        var params = { status: 'Testing image upload...', media_ids: [mediaID] };
+        // might want to refactor this to make it easier to pass in status?
+        var params = { status: text, media_ids: [mediaID] };
 
         Twitter.post('statuses/update', params, function (err, data, response) {
           if (err) console.error('Error posting status/update: ', err);
@@ -93,14 +94,22 @@ function uploadAndPostMedia(media) {
   });
 }
 
+let testDescription = 'Testing image upload with custom text.';
 
 function postImageFromURL(url) {
+  // MPM instead, return toBase64(url)
   toBase64(url)
-  .then(data => uploadAndPostMedia(data))
+  .then(data => uploadAndPostMedia(data, testDescription))
   .catch(err => console.error(err));
 }
 
 postImageFromURL('https://images.nypl.org/index.php?id=1219221&t=w');
+
+// eventually, instead of this test image, hit the NYPL API
+// select a random image from records array (by index)
+// save image id and description as variables
+// postImageFromUrl(`https://images.nypl.org/index.php?id={imageID}&t=w`)
+// pass description (uh how) as status (in params object)
 
 
 // some utility functions for the future
