@@ -103,7 +103,15 @@ function getImageFromAPI() {
   getInitialData()
   .then(records => {
     console.log('I found ' + records.length + ' unique records');
+    let index = Math.floor(Math.random() * records.length);
     console.log('I selected this random record: ', Math.floor(Math.random() * records.length));
+    let record = records[index];
+    console.log('record data:', record);
+    let recordURL = record.itemLink;
+    let imageURL = `https://images.nypl.org/index.php?id=${record.imageID}&t=w`;
+    let text = record.title;
+    let tweetData = {recordURL, imageURL, text};
+    console.log('info for Tweet:', tweetData);
     // then actually print / return the info for this record
   });
 }
@@ -137,11 +145,7 @@ function postImageFromURL(url) {
 
 // some utility functions for the future
 
-// function generateRandom() { /* . . . */ }
-
-// function selectRecord() { /* . . . */ }
-
-// function parseAddressInfo() { /* . . . */ }
+// function parseLocation() { /* . . . */ }
 
 // function generateStreetview() { /* . . . */ }
 
