@@ -95,30 +95,29 @@ function uploadAndPostMedia(media, text) { // pass a second parameter here for a
 }
 
 
-// function getImageFromAPI() { /* . . . */ }
-  // this will call getInitialData, generateRandom, and selectRecord
-  // or just getInitialData and selectRecord (which does the random selection)
-
+// MPM give this function a more descriptive name?
+// something like, getRecordFromNYPL or parseRecordData?
 function getImageFromAPI() {
   getInitialData()
   .then(records => {
-    console.log('I found ' + records.length + ' unique records');
+    // this selects a random record, based on the total number of records (records.length)
     let index = Math.floor(Math.random() * records.length);
-    console.log('I selected this random record: ', Math.floor(Math.random() * records.length));
     let record = records[index];
-    console.log('record data:', record);
+    // console.log('record data:', record);
     let recordURL = record.itemLink;
+    // imageURL templating is necessary because that field is only a property on *some* records,
+    // but *all* records have an imageID, and the image URL consistently follows this pattern
     let imageURL = `https://images.nypl.org/index.php?id=${record.imageID}&t=w`;
     let text = record.title;
     let tweetData = {recordURL, imageURL, text};
     console.log('info for Tweet:', tweetData);
-    // then actually print / return the info for this record
+    return tweetData;
   });
 }
 
 getImageFromAPI();
 
-
+// eventually, replace this testDescription with tweetData.text
 let testDescription = 'Testing image upload with custom text.';
 
 function postImageFromURL(url) {
