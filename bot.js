@@ -9,12 +9,7 @@ const NYPLkey = config.nypl.key;
 // (i.e. 1000 milliseconds * 60 seconds * 60 mins * 24 hrs)
 // setInterval(tweeter, 1000*60*60*24);
 
-// send first tweet! for now, alternating between 'Testing, testing...' and 'Oh, hey world!'
-// Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
-//   console.log('Posting our first Tweet...!');
-//   if (err) console.error(err);
-//   console.log('I just tweeted: ', data.text);
-// });
+/*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
 function getInitialData() {
   // eventually change URL parameters to get all items in single request
@@ -24,7 +19,7 @@ function getInitialData() {
       Authorization: NYPLkey
     }})
   .then(function(response) {
-    console.log('got response');
+    console.log('got response from initial API call');
     if (response.status !== 200) {
       console.log('Error with status code: ', response.status);
       return;
@@ -44,23 +39,36 @@ function getInitialData() {
   });
 }
 
-// getInitialData();
+// MPM give this function a more descriptive name?
+// something like, getRecordFromNYPL or parseRecordData?
+function getImageFromAPI() {
+  getInitialData()
+  .then(records => {
+    // this selects a random record, based on the total number of records (records.length)
+    let index = Math.floor(Math.random() * records.length);
+    let record = records[index];
+    // console.log('record data:', record);
+    let recordURL = record.itemLink;
+    // imageURL templating is necessary because that field is only a property on *some* records,
+    // but *all* records have an imageID, and the image URL consistently follows this pattern
+    let imageURL = `https://images.nypl.org/index.php?id=${record.imageID}&t=w`;
+    let text = record.title;
+    let tweetData = {recordURL, imageURL, text};
+    console.log('info for Tweet:', tweetData);
+    return tweetData;
+  });
+}
 
 
-// get the image URLs from getInitialData etc.
-// but need to upload the image to the media/upload endpoint, THEN post it to statuses/update
+/*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
+
+// upload the image to the media/upload endpoint, THEN post it to statuses/update
 // this requires getting the base64-encoded file content from the web image
-// create a canvas, load your image into it and then use toDataURL() to get the base64 representation ??? oy vey
-// alternatively, make an XMLHttpRequest (or fetch) and then process the response?
-// okay but I bet FileReader is a browser API? we need an alternative for node??
-// use built-in buffer function from node-fetch
-// (not clear why blob isn't working... client-side functionality, but still, should work isomorphically in node-fetch??)
-
 
 function toBase64(url) {
   return fetch(url)
   .then(function(response) {
-    console.log('got response from fetching image');
+    console.log('got response from fetching image URL');
     return response.buffer();
   })
   .then(function(buffer) {
@@ -95,56 +103,43 @@ function uploadAndPostMedia(media, text) { // pass a second parameter here for a
 }
 
 
-// MPM give this function a more descriptive name?
-// something like, getRecordFromNYPL or parseRecordData?
-function getImageFromAPI() {
-  getInitialData()
-  .then(records => {
-    // this selects a random record, based on the total number of records (records.length)
-    let index = Math.floor(Math.random() * records.length);
-    let record = records[index];
-    // console.log('record data:', record);
-    let recordURL = record.itemLink;
-    // imageURL templating is necessary because that field is only a property on *some* records,
-    // but *all* records have an imageID, and the image URL consistently follows this pattern
-    let imageURL = `https://images.nypl.org/index.php?id=${record.imageID}&t=w`;
-    let text = record.title;
-    let tweetData = {recordURL, imageURL, text};
-    console.log('info for Tweet:', tweetData);
-    return tweetData;
-  });
-}
-
-getImageFromAPI();
-
-// eventually, replace this testDescription with tweetData.text
-let testDescription = 'Testing image upload with custom text.';
-
-function postImageFromURL(url) {
+// rename this one, too: something like, postNYPLImageToTwitter? or just postImage?
+function postImageFromURL(imageURL, text) {
   // also need to pass in test description here?
   // MPM instead, return toBase64(url)
-  toBase64(url)
-  .then(data => uploadAndPostMedia(data, testDescription))
+  toBase64(imageURL)
+  .then(data => uploadAndPostMedia(data, text))
   .catch(err => console.error(err));
 }
 
-// postImageFromURL('https://images.nypl.org/index.php?id=1219221&t=w');
+
+/*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
+
+// send first tweet! for now, alternating between 'Testing, testing...' and 'Oh, hey world!'
+// Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
+//   console.log('Posting our first Tweet...!');
+//   if (err) console.error(err);
+//   console.log('I just tweeted: ', data.text);
+// });
+
+// then, once a day (using setInterval?), call getImageFromAPI and then postImageFromURL
+// call postImage function with tweetData.imageURL, tweetData.recordURL, tweetData.text ???
+
+let test = {
+  imageURL: 'https://images.nypl.org/index.php?id=1219221&t=w',
+  text: 'Testing one more time.'
+};
+
+// combine getImage and postImage into a single function, and pass that as callback to setInterval?
+// getImageFromAPI();
+postImageFromURL(test.imageURL, test.text);
 
 
-
-// eventually, instead of this test image, hit the NYPL API
-// select a random image from records array (by index)
-// save image id and description as variables
-// postImageFromUrl(`https://images.nypl.org/index.php?id={imageID}&t=w`)
 // pass description (uh how) as status (in params object)
 
 
-// basically, once a day (using setInterval), call getImageFromAPI and then postImageFromURL
 
-
-// some utility functions for the future
-
-// function parseLocation() { /* . . . */ }
-
-// function generateStreetview() { /* . . . */ }
+// some utility functions for the future:
+  // function parseLocation() { /* . . . */ }
+  // function generateStreetview() { /* . . . */ }
 
