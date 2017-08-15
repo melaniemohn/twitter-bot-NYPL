@@ -18,8 +18,8 @@ const NYPLkey = config.nypl.key;
 
 function getInitialData() {
   // eventually change URL parameters to get all items in single request
-  // also, IMPORTANT: probably going to want to return fetch instead of just calling it
-  fetch('http://api.repo.nypl.org/api/v1/items/search?q=b13668355&per_page=2', {
+  // also, IMPORTANT: return fetch instead of just calling it
+  return fetch('http://api.repo.nypl.org/api/v1/items/search?q=b13668355&per_page=362', {
     headers: {
       Authorization: NYPLkey
     }})
@@ -94,22 +94,45 @@ function uploadAndPostMedia(media, text) { // pass a second parameter here for a
   });
 }
 
+
+// function getImageFromAPI() { /* . . . */ }
+  // this will call getInitialData, generateRandom, and selectRecord
+  // or just getInitialData and selectRecord (which does the random selection)
+
+function getImageFromAPI() {
+  getInitialData()
+  .then(records => {
+    console.log('I found ' + records.length + ' unique records');
+    console.log('I selected this random record: ', Math.floor(Math.random() * records.length));
+    // then actually print / return the info for this record
+  });
+}
+
+getImageFromAPI();
+
+
 let testDescription = 'Testing image upload with custom text.';
 
 function postImageFromURL(url) {
+  // also need to pass in test description here?
   // MPM instead, return toBase64(url)
   toBase64(url)
   .then(data => uploadAndPostMedia(data, testDescription))
   .catch(err => console.error(err));
 }
 
-postImageFromURL('https://images.nypl.org/index.php?id=1219221&t=w');
+// postImageFromURL('https://images.nypl.org/index.php?id=1219221&t=w');
+
+
 
 // eventually, instead of this test image, hit the NYPL API
 // select a random image from records array (by index)
 // save image id and description as variables
 // postImageFromUrl(`https://images.nypl.org/index.php?id={imageID}&t=w`)
 // pass description (uh how) as status (in params object)
+
+
+// basically, once a day (using setInterval), call getImageFromAPI and then postImageFromURL
 
 
 // some utility functions for the future
