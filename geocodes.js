@@ -38,27 +38,21 @@ function generateGeocode(searchString) {
 
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
-// let coordinates = {};
-let n = 10; // for now, just use first n results from NYPL?
-let trimmed = locationData.slice(0, n);
-// console.log('working with smaller array:', trimmed);
-
-
-async function generateValidGeocodes(locationsArray) {
-	// for (let location of locations) {
-	// 	await generateGeocode(location);
-	// }
-
-	await Promise.all(locationsArray.map(async (location) => {
-		const geocode = await generateGeocode(location);
-		if (geocode) {
-			/* MPM COME BACK HERE */
-		}
-	}))
-}
-
 // playing around with async / await and Promise.all but leaving this sloppy for now:
 // mostly for the sake of making sure there's a reasonable rate of return on location data
+
+// async function generateValidGeocodes(locationsArray) {
+// 	// for (let location of locations) {
+// 	// 	await generateGeocode(location);
+// 	// }
+// 	// or . . .
+// 	await Promise.all(locationsArray.map(async (location) => {
+// 		const geocode = await generateGeocode(location);
+// 		if (geocode) {
+// 			/* MPM COME BACK HERE */
+// 		}
+// 	}))
+// }
 
 let validGeocodes = {};
 let searches = 0;
@@ -75,16 +69,6 @@ locationData.forEach((location, index) => {
 		}
 	});
 });
-
-// let geocodesArray = trimmed.map((location, index) => {
-// 	generateGeocode(location)
-// 	.then(geocode => {
-// 		if (geocode) {
-// 			validGeocodes[index] = geocode;
-// 		}
-// 	})
-// });
-
 
 // two ways to do this... batch process all locations from NYPL data and save the coordinates for lookup later?
 // seems fine to do NYPL lookup live each time, but trickier with maps data because addresses might not parse
