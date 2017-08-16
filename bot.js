@@ -6,10 +6,6 @@ const Twitter = new Twit(config.twitter);
 const NYPLkey = config.nypl.key;
 const placesKey = config.places.key;
 
-// this will call the tweeter function [replace / write] every 24 hours
-// (i.e. 1000 milliseconds * 60 seconds * 60 mins * 24 hrs)
-// setInterval(tweeter, 1000*60*60*24);
-
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
 const googleMapsClient = require('@google/maps').createClient({
@@ -20,15 +16,11 @@ const googleMapsClient = require('@google/maps').createClient({
 const badAddressData = {};
 
 // change this function to accept entire record, not just search string
-// and instead of generating the geocode, we're adding it to the record object?
-// BUT, will this mess up the error handling???
 function generateGeocode(record) {
   let searchString = record.title;
   return googleMapsClient.geocode({address: searchString}).asPromise()
   .then((response) => {
-    // console.log('list of results:', response.json.results)
-    // console.log('coordinates:', response.json.results[0].geometry.location);
-    // return response.json.results[0].geometry.location;
+    // instead of just returning geocode, add it to the record object
     record.geocode = response.json.results[0].geometry.location;
     return record;
   })
@@ -37,7 +29,8 @@ function generateGeocode(record) {
     // for now, just use this to generate a list of places to search by hand
     console.error('Error: ' + err);
     badAddressData[record.uuid] = record.title;
-    // and also search for a new record, etc., with another call to generateTweetData
+    // search for a new record, etc., with another call to generateTweetData
+    // OR Tweet anyway, and follow up by asking for hand-coded coordinates?
     console.log('trying again I guess??????');
     generateTweetData();
   });
@@ -46,8 +39,6 @@ function generateGeocode(record) {
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
 function getInitialData() {
-  // eventually change URL parameters to get all items in single request
-  // also, IMPORTANT: return fetch instead of just calling it
   return fetch('http://api.repo.nypl.org/api/v1/items/search?q=b13668355&per_page=362', {
     headers: {
       Authorization: NYPLkey
@@ -73,12 +64,6 @@ function getInitialData() {
   });
 }
 
-// consider filtering the records array for locations that are easily searchable?
-
-// MPM give this function a more descriptive name? getRecordFromNYPL or parseRecordData?
-// separate this into two functions: one to pick a random index, and one to get image
-// after picking random index, first check coordinates, THEN generate image URL
-
 function getRandomRecord() {
   return getInitialData()
   .then(records => {
@@ -91,25 +76,12 @@ function getRandomRecord() {
 // this is where we start needing google maps
 function checkLocation(record) {
   let ID = record.uuid;
-  let address = record.title;
   // first, look up by ID in badAddressData set
   if (badAddressData[ID]) {
-    console.log('try again...');
+    console.log('Trying again...');
     generateTweetData();
   } else {
-    return generateGeocode(record)
-    // .then(updatedRecord => {
-    //   // uhhh will we ever get in here
-    //   if (!updatedRecord.geocode) {
-    //     // add to bad address set...
-    //     badAddressData[ID] = address;
-    //     // and then search for another record?
-    //     generateTweetData();
-    //   } else {
-    //     console.log('still truckin');
-    //     return updatedRecord;
-    //   }
-    // });
+    return generateGeocode(record);
   }
 }
 
@@ -121,39 +93,19 @@ function processRecord(record) {
   // let streetview = ??
   let tweetData = {recordURL, imageURL, text, location};
   console.log('omfg made it:', tweetData);
-  // return tweetData;
+  return tweetData;
 }
-
 
 function generateTweetData() {
-  getRandomRecord()
+  return getRandomRecord()
   .then(record => checkLocation(record))
-  .then(record => processRecord(record));
+  // .then(record => processRecord(record))
+  // .catch(err => console.log('Error generating Tweet data:', err));
 }
 
-generateTweetData();
-
-// refactored this function into the three listed above
-// but then started to bite it basically
-function getImageFromAPI() {
-  getInitialData()
-  .then(records => {
-    // this selects a random record, based on the total number of records (records.length)
-    let index = Math.floor(Math.random() * records.length);
-    let record = records[index];
-    // console.log('record data:', record);
-    let recordURL = record.itemLink;
-    // imageURL templating is necessary because that field is only a property on *some* records,
-    // but *all* records have an imageID, and the image URL consistently follows this pattern
-    let imageURL = `https://images.nypl.org/index.php?id=${record.imageID}&t=w`;
-    let text = record.title;
-    let tweetData = {recordURL, imageURL, text};
-    console.log('info for Tweet:', tweetData);
-    return tweetData;
-  });
-}
-
-// getImageFromAPI();
+// synopsis of what has happened so far:
+// get all available records from NYPL API and pick random record
+// after picking random index, first check coordinates, then proceed with tweets
 
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
@@ -174,8 +126,6 @@ function toBase64(url) {
   .catch(err => console.error(err));
 }
 
-
-
 function uploadAndPostMedia(media, text) { // pass a second parameter here for altText??
   // actually combine these two parameters into one record?
   Twitter.post('media/upload', { media_data: media }, function (err, data, response) {
@@ -192,7 +142,7 @@ function uploadAndPostMedia(media, text) { // pass a second parameter here for a
 
         Twitter.post('statuses/update', params, function (err, data, response) {
           if (err) console.error('Error posting status/update: ', err);
-          console.log('I just tweeted: ', data.text);
+          console.log('I just tweeted:', data.text);
         });
       }
     });
@@ -200,11 +150,13 @@ function uploadAndPostMedia(media, text) { // pass a second parameter here for a
 }
 
 
-// rename this one, too: something like, postNYPLImageToTwitter? or just postImage?
-function postImageFromURL(imageURL, text) {
+// rename this: something like, postNYPLImageToTwitter? or just postImage?
+// and refactor to just take one argument (record) which we'll then parse
+function tweetImageAndDescription(imageURL, text) {
   // also need to pass in test description here?
-  // MPM instead, return toBase64(url)
-  toBase64(imageURL)
+  // MPM instead, return toBase64(url) to .then off of this thing and call it again
+  console.log('made it inside of tweetImage');
+  return toBase64(imageURL)
   .then(data => uploadAndPostMedia(data, text))
   .catch(err => console.error(err));
 }
@@ -222,15 +174,33 @@ function postImageFromURL(imageURL, text) {
 // then, once a day (using setInterval?), call getImageFromAPI and then postImageFromURL
 // call postImage function with tweetData.imageURL, tweetData.recordURL, tweetData.text ???
 
-let test = {
-  imageURL: 'https://images.nypl.org/index.php?id=1219221&t=w',
-  text: 'Testing one more time.'
-};
+// let test = {
+//   imageURL: 'https://images.nypl.org/index.php?id=1219221&t=w',
+//   text: 'Testing one more time.'
+// };
+
+function sendTwoTweets(content) {
+  // save tweet data up here
+  console.log('inside sendTwoTweets');
+  let image = content.imageURL;
+  let text = content.title + ' ' + content.itemLink;
+  tweetImageAndDescription(image, text);
+  // and then call tweet again
+  // .then... with google values
+}
+
+generateTweetData()
+.then(tweetData => {
+  console.log('tweet data', tweetData);
+  let imageURL = `https://images.nypl.org/index.php?id=${tweetData.imageID}&t=w`;
+  let title = tweetData.title;
+  let itemLink = tweetData.itemLink;
+  let content = {imageURL, title, itemLink};
+  console.log('*********content:', content);
+  sendTwoTweets(content);
+});
 
 // combine getImage and postImage into a single function, and pass that as callback to setInterval?
-// getImageFromAPI();
-// postImageFromURL(test.imageURL, test.text);
-
 
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
