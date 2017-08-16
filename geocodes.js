@@ -1,14 +1,12 @@
-// just do this to generate fallback geocodes??
+// MPM: really just using this file as a sandbox for getting used to google maps API
+// copying over core functionality to the actual bot.js file. . .
 
 const config = require('./config.js');
 const placesKey = config.places.key;
 
-// const locationData = require('./bot.js');
-// sometimes this is a pending Promise :/
-// could also import hard-coded data from locations.js?
+// for now, just import hard-coded data from locations.js
 const locationData = require('./locations.js').list;
 
-// note: from the docs...
 // Promises are only available if you supply a Promise constructor to the createClient() method.
 // You must also chain .asPromise() to a method before any .then() or .catch() methods.
 
@@ -17,28 +15,21 @@ const googleMapsClient = require('@google/maps').createClient({
   Promise: Promise
 });
 
-// googleMapsClient.geocode({
-//   address: '1600 Amphitheatre Parkway, Mountain View, CA'
-// }, function(err, response) {
-//   if (err) console.error('Error with Google Maps Client:', err);
-// 	console.log('*****RESULTS HERE', response.json.results);
-// });
+// geocode an address with a promise
+// results is an array of suggested places
+// lat-long coordinates as location on geometry object
 
-// or, geocode an address with a promise
-// results is an array of suggested places?
-// iterate over this array? or just pick first item?
-// access lat-long coordinates on geometry object > location object
-
+// MPM: experiment with using query param instead of address??
 function generateGeocode(searchString) {
 	return googleMapsClient.geocode({address: searchString}).asPromise()
   .then((response) => {
+    // console.log('list of results:', response.json.results)
     // console.log('coordinates:', response.json.results[0].geometry.location);
     return response.json.results[0].geometry.location;
   })
   .catch((err) => {
     // error is consistently "Cannot read property 'geometry' of undefined"
     // for now, just use this to generate a list of places to search by hand
-    // but also experiment with using query param instead of address??
     console.error('Error: ' + err);
     console.log('Search again for address: ' + searchString);
   });
@@ -52,28 +43,22 @@ let n = 10; // for now, just use first n results from NYPL?
 let trimmed = locationData.slice(0, n);
 // console.log('working with smaller array:', trimmed);
 
-// function filterGeocodes(locations) {
-// 	let validGeocodes = {};
-// 	// ...
-// }
 
-// filterGeocodes(trimmed);
+async function generateValidGeocodes(locationsArray) {
+	// for (let location of locations) {
+	// 	await generateGeocode(location);
+	// }
 
+	await Promise.all(locationsArray.map(async (location) => {
+		const geocode = await generateGeocode(location);
+		if (geocode) {
+			/* MPM COME BACK HERE */
+		}
+	}))
+}
 
-// let geocodesArray = return Promise.all()
-
-// async function generateValidGeocodes(locationsArray) {
-// 	// for (let location of locations) {
-// 	// 	await generateGeocode(location);
-// 	// }
-
-// 	await Promise.all(locationsArray.map(async (location) => {
-// 		const geocode = await generateGeocode(location);
-// 		if (geocode) {
-// 			/* MPM COME BACK HERE */
-// 		}
-// 	}))
-// }
+// playing around with async / await and Promise.all but leaving this sloppy for now:
+// mostly for the sake of making sure there's a reasonable rate of return on location data
 
 let validGeocodes = {};
 let searches = 0;
@@ -91,14 +76,11 @@ locationData.forEach((location, index) => {
 	});
 });
 
-
-// let coordinates = {};
-
 // let geocodesArray = trimmed.map((location, index) => {
 // 	generateGeocode(location)
 // 	.then(geocode => {
 // 		if (geocode) {
-// 			coordinates[index] = geocode;
+// 			validGeocodes[index] = geocode;
 // 		}
 // 	})
 // });
@@ -116,3 +98,5 @@ locationData.forEach((location, index) => {
 // if not, search Places API
 	// if success, proceed with tweet
 	// if failure, push to badAddresses, generate another random record, and repeat
+
+// then, use badAddresses as dataset to search by hand (or write something to parse)
