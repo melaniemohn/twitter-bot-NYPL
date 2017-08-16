@@ -4,6 +4,7 @@ const config = require('./config.js');
 
 const Twitter = new Twit(config.twitter);
 const NYPLkey = config.nypl.key;
+const placesKey = config.places.key;
 
 // this will call the tweeter function [replace / write] every 24 hours
 // (i.e. 1000 milliseconds * 60 seconds * 60 mins * 24 hrs)
@@ -59,6 +60,17 @@ function getImageFromAPI() {
   });
 }
 
+// using the function below to generate search strings I'll pass to google places API
+let locationData = getInitialData().then(records => {
+  let locations = [];
+  records.forEach(record => {
+    locations.push(record.title);
+  });
+  console.log(locations);
+  // return locations;
+});
+
+// module.exports = {locationData};
 
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
@@ -132,14 +144,21 @@ let test = {
 
 // combine getImage and postImage into a single function, and pass that as callback to setInterval?
 // getImageFromAPI();
-postImageFromURL(test.imageURL, test.text);
+// postImageFromURL(test.imageURL, test.text);
 
 
-// pass description (uh how) as status (in params object)
-
+/*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
 
 // some utility functions for the future:
   // function parseLocation() { /* . . . */ }
   // function generateStreetview() { /* . . . */ }
+
+// Places API routes we might hit to get coordinates
+// can this return multiple results? / array of suggested locations?
+let map = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=123+main+street&key=${placesKey}`;
+let withLocation = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=123+main+street&location=42.3675294,-71.186966&radius=10000&key=${placesKey}`;
+
+// then, use coordinates to hit Streetview API? or even just interpolate them into URL?
+// for now, try this with each record, but only Tweet if we get back a valid response
 
