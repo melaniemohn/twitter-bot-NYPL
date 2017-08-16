@@ -40,6 +40,8 @@ function getInitialData() {
   });
 }
 
+// consider filtering the records array for locations that are easily searchable?
+
 // MPM give this function a more descriptive name?
 // something like, getRecordFromNYPL or parseRecordData?
 function getImageFromAPI() {
