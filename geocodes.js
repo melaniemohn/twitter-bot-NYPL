@@ -30,21 +30,26 @@ const googleMapsClient = require('@google/maps').createClient({
 function generateGeocode(searchString) {
 	googleMapsClient.geocode({address: searchString}).asPromise()
   .then((response) => {
-    console.log('lat long coordinates:', response.json.results[0].geometry.location);
+    console.log('coordinates:', response.json.results[0].geometry.location);
   })
   .catch((err) => {
-    console.log('Error with Google Maps Client:', err);
+    // error is consistently "Cannot read property 'geometry' of undefined"
+    // for now, just use this to generate a list of places to search by hand
+    // but also experiment with using query param instead of address??
+    console.error('Error: ' + err);
+    console.log('Search again for address: ' + searchString);
   });
 }
 
 // for now, just try this on the first n results from NYPL
-let n = 5;
+let n = 10;
 console.log(locationData.slice(0, n));
 
 for (let i = 0; i < n; i++) {
 	generateGeocode(locationData[i]);
 }
 
+// rewrite this as forEach and capture index of record alongside coordinates
 // eventually, push to some kind of data structure of geocodes
 // const geocodes = [];
 
