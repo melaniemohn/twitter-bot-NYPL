@@ -12,6 +12,39 @@ const placesKey = config.places.key;
 
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
+const googleMapsClient = require('@google/maps').createClient({
+  key: placesKey,
+  Promise: Promise
+});
+
+const badAddressData = {};
+
+// change this function to accept entire record, not just search string
+// and instead of generating the geocode, we're adding it to the record object?
+// BUT, will this mess up the error handling???
+function generateGeocode(record) {
+  let searchString = record.title;
+  return googleMapsClient.geocode({address: searchString}).asPromise()
+  .then((response) => {
+    // console.log('list of results:', response.json.results)
+    // console.log('coordinates:', response.json.results[0].geometry.location);
+    // return response.json.results[0].geometry.location;
+    record.geocode = response.json.results[0].geometry.location;
+    return record;
+  })
+  .catch((err) => {
+    // error is consistently "Cannot read property 'geometry' of undefined"
+    // for now, just use this to generate a list of places to search by hand
+    console.error('Error: ' + err);
+    badAddressData[record.uuid] = record.title;
+    // and also search for a new record, etc., with another call to generateTweetData
+    console.log('trying again I guess??????');
+    generateTweetData();
+  });
+}
+
+/*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
+
 function getInitialData() {
   // eventually change URL parameters to get all items in single request
   // also, IMPORTANT: return fetch instead of just calling it
@@ -42,8 +75,66 @@ function getInitialData() {
 
 // consider filtering the records array for locations that are easily searchable?
 
-// MPM give this function a more descriptive name?
-// something like, getRecordFromNYPL or parseRecordData?
+// MPM give this function a more descriptive name? getRecordFromNYPL or parseRecordData?
+// separate this into two functions: one to pick a random index, and one to get image
+// after picking random index, first check coordinates, THEN generate image URL
+
+function getRandomRecord() {
+  return getInitialData()
+  .then(records => {
+    // this selects a random record, based on the total number of records (records.length)
+    let index = Math.floor(Math.random() * records.length);
+    return records[index];
+  });
+}
+
+// this is where we start needing google maps
+function checkLocation(record) {
+  let ID = record.uuid;
+  let address = record.title;
+  // first, look up by ID in badAddressData set
+  if (badAddressData[ID]) {
+    console.log('try again...');
+    generateTweetData();
+  } else {
+    return generateGeocode(record)
+    // .then(updatedRecord => {
+    //   // uhhh will we ever get in here
+    //   if (!updatedRecord.geocode) {
+    //     // add to bad address set...
+    //     badAddressData[ID] = address;
+    //     // and then search for another record?
+    //     generateTweetData();
+    //   } else {
+    //     console.log('still truckin');
+    //     return updatedRecord;
+    //   }
+    // });
+  }
+}
+
+function processRecord(record) {
+  let recordURL = record.itemLink;
+  let imageURL = `https://images.nypl.org/index.php?id=${record.imageID}&t=w`;
+  let text = record.title;
+  let location = record.geocode;
+  // let streetview = ??
+  let tweetData = {recordURL, imageURL, text, location};
+  console.log('omfg made it:', tweetData);
+  // return tweetData;
+}
+
+
+function generateTweetData() {
+  getRandomRecord()
+  .then(record => checkLocation(record))
+  .then(record => processRecord(record));
+}
+
+generateTweetData();
+
+// refactored this function into the three listed above
+// but then started to bite it basically
 function getImageFromAPI() {
   getInitialData()
   .then(records => {
@@ -62,17 +153,7 @@ function getImageFromAPI() {
   });
 }
 
-// using the function below to generate search strings I'll pass to google places API
-let locationData = getInitialData().then(records => {
-  let locations = [];
-  records.forEach(record => {
-    locations.push(record.title);
-  });
-  console.log(locations);
-  // return locations;
-});
-
-// module.exports = {locationData};
+// getImageFromAPI();
 
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
@@ -94,7 +175,9 @@ function toBase64(url) {
 }
 
 
+
 function uploadAndPostMedia(media, text) { // pass a second parameter here for altText??
+  // actually combine these two parameters into one record?
   Twitter.post('media/upload', { media_data: media }, function (err, data, response) {
     if (err) console.error('Error processing upload: ', err);
     let mediaID = data.media_id_string;
