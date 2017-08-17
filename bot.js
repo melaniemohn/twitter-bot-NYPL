@@ -36,6 +36,29 @@ function generateGeocode(record) {
   });
 }
 
+// might not have to use this directly? instead, just use toBase64 function to fetch image?
+function getStreetview(lat, lng) {
+  return fetch(`http://maps.googleapis.com/maps/api/streetview?size=800x400&location=${lat},${lng}&heading=235&key=${placesKey}`)
+  .then(function(response) {
+    console.log('got response from Streetview API');
+    if (response.status !== 200) {
+      console.log('Error with status code: ', response.status);
+      return;
+    }
+    return response.json();
+    // note: the response from a fetch() request is a Stream object
+    // calling .json() on our response object will return a Promise
+    })
+  .then(function(data) {
+    console.log('data from streetview:', data);
+  })
+  .catch(function(err) {
+    console.error('Error getting data: ', err);
+  });
+}
+
+// getStreetview(40.7424303, -73.9926005);
+
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
 function getInitialData() {
@@ -56,7 +79,6 @@ function getInitialData() {
   .then(function(data) {
     let records = data.nyplAPI.response.result;
     // result will be an array of records
-    // console.log(records);
     return records;
   })
   .catch(function(err) {
@@ -73,7 +95,6 @@ function getRandomRecord() {
   });
 }
 
-// this is where we start needing google maps
 function checkLocation(record) {
   let ID = record.uuid;
   // first, look up by ID in badAddressData set
@@ -152,6 +173,8 @@ function uploadAndPostMedia(media, text) { // pass a second parameter here for a
 
 // rename this: something like, postNYPLImageToTwitter? or just postImage?
 // and refactor to just take one argument (record) which we'll then parse
+// or rewrite as tweetNYPLImage
+// and then call tweetStreetview separately, with multiple toBase64 calls?
 function tweetImageAndDescription(imageURL, text) {
   // also need to pass in test description here?
   // MPM instead, return toBase64(url) to .then off of this thing and call it again
@@ -165,28 +188,22 @@ function tweetImageAndDescription(imageURL, text) {
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
 // send first tweet! for now, alternating between 'Testing, testing...' and 'Oh, hey world!'
-// Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
-//   console.log('Posting our first Tweet...!');
-//   if (err) console.error(err);
-//   console.log('I just tweeted: ', data.text);
-// });
-
-// then, once a day (using setInterval?), call getImageFromAPI and then postImageFromURL
-// call postImage function with tweetData.imageURL, tweetData.recordURL, tweetData.text ???
-
-// let test = {
-//   imageURL: 'https://images.nypl.org/index.php?id=1219221&t=w',
-//   text: 'Testing one more time.'
-// };
+Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
+  console.log('Posting our first Tweet...!');
+  if (err) console.error(err);
+  console.log('I just tweeted: ', data.text);
+});
 
 function sendTwoTweets(content) {
   // save tweet data up here
   console.log('inside sendTwoTweets');
   let image = content.imageURL;
-  let text = content.title + ' ' + content.itemLink;
-  tweetImageAndDescription(image, text);
-  // and then call tweet again
-  // .then... with google values
+  let caption = content.title + ' ' + content.itemLink; // add an oldNYC hashtag here?
+  // and then make a separate caption for streetview images / reply to older Tweet??
+  // also, instead of just tweeting one streetview image, generate a set of 5-6???
+  let streetview = content.streetviewURL;
+  tweetImageAndDescription(image, caption)
+  .then(tweetImageAndDescription(streetview, content.title));
 }
 
 generateTweetData()
@@ -195,25 +212,17 @@ generateTweetData()
   let imageURL = `https://images.nypl.org/index.php?id=${tweetData.imageID}&t=w`;
   let title = tweetData.title;
   let itemLink = tweetData.itemLink;
-  let content = {imageURL, title, itemLink};
+  let lat = tweetData.geocode.lat;
+  let lng = tweetData.geocode.lng;
+  let streetviewURL = `http://maps.googleapis.com/maps/api/streetview?size=800x400&location=${lat},${lng}&heading=235&key=${placesKey}`;
+  let content = {imageURL, title, itemLink, streetviewURL};
   console.log('*********content:', content);
   sendTwoTweets(content);
 });
 
-// combine getImage and postImage into a single function, and pass that as callback to setInterval?
+
+// use this to loop through different "heading" values
+function generateStreetviewURLs() { /* . . . . */ }
 
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
-
-
-// some utility functions for the future:
-  // function parseLocation() { /* . . . */ }
-  // function generateStreetview() { /* . . . */ }
-
-// Places API routes we might hit to get coordinates
-// can this return multiple results? / array of suggested locations?
-let map = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=123+main+street&key=${placesKey}`;
-let withLocation = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=123+main+street&location=42.3675294,-71.186966&radius=10000&key=${placesKey}`;
-
-// then, use coordinates to hit Streetview API? or even just interpolate them into URL?
-// for now, try this with each record, but only Tweet if we get back a valid response
 
