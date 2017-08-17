@@ -36,7 +36,7 @@ function generateGeocode(record) {
   });
 }
 
-// might not have to use this directly? instead, just use toBase64 function to fetch image?
+// might not have to use this directly? instead, just use toBase64 function to fetch image
 function getStreetview(lat, lng) {
   return fetch(`http://maps.googleapis.com/maps/api/streetview?size=800x400&location=${lat},${lng}&heading=235&key=${placesKey}`)
   .then(function(response) {
@@ -147,8 +147,9 @@ function toBase64(url) {
   .catch(err => console.error(err));
 }
 
-function uploadAndPostMedia(media, text) { // pass a second parameter here for altText??
-  // actually combine these two parameters into one record?
+// rename this: something like, postNYPLImageToTwitter?
+// and combine these two parameters into one record?
+function uploadAndPostMedia(media, text) {
   Twitter.post('media/upload', { media_data: media }, function (err, data, response) {
     if (err) console.error('Error processing upload: ', err);
     let mediaID = data.media_id_string;
@@ -170,9 +171,8 @@ function uploadAndPostMedia(media, text) { // pass a second parameter here for a
   });
 }
 
+// write a separate version of 'upload and post' function for Streetview data
 
-// rename this: something like, postNYPLImageToTwitter? or just postImage?
-// and refactor to just take one argument (record) which we'll then parse
 // or rewrite as tweetNYPLImage
 // and then call tweetStreetview separately, with multiple toBase64 calls?
 function tweetImageAndDescription(imageURL, text) {
@@ -204,8 +204,10 @@ function sendTwoTweets(content) {
   let streetview = content.streetviewURL;
   tweetImageAndDescription(image, caption)
   .then(tweetImageAndDescription(streetview, content.title));
+  // the second tweetImage is resolving before the first...
 }
 
+// wrap this in a function to call daily?
 generateTweetData()
 .then(tweetData => {
   console.log('tweet data', tweetData);
