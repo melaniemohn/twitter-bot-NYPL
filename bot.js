@@ -135,8 +135,11 @@ function toBase64(url) {
 
 // rename this: something like, postNYPLImageToTwitter?
 // and combine these two parameters into one record?
-//
+// refactor into uploadImage and postImage? and THEN refactor to take in array of images (for multiple streetviews?)
+// uploadImage (post media/upload) will pass return value with media ID (access as response.data.media_id_string)
+// note: use ID string (instead of media_id) in case of conversion to alphanumeric (happened with Instagram...)
 function uploadAndPostMedia(media, text) {
+  // MPM instead return promise?
   return Twitter.post('media/upload', { media_data: media }, function (err, data, response) {
     if (err) console.error('Error processing upload: ', err);
     let mediaID = data.media_id_string;
@@ -154,29 +157,19 @@ function uploadAndPostMedia(media, text) {
         Twitter.post('statuses/update', params, function (err, data, response) {
           if (err) console.error('Error posting status/update: ', err);
           console.log('I just tweeted:', data.text);
-          // console.log('*****data from tweet:', data);
-          // MPM can we access tweet ID in here for reply???
-          // use ID string just in case they convert to alphanumeric
-          return data.id_str;
+          return data.id_str; // yeah this isn't working; instead just use response as return value
         });
       }
     });
   });
 }
 
-// write a separate version of 'upload and post' function for Streetview data
-// in_reply_to_status_id
-
-
-// rewrite as tweetNYPLImage? or, initialTweet / replyTweet?
+// write a separate version of 'upload and post' function for streetview reply, using in_reply_to_status_id parameter
+// and/or refactor tweetImageAndDescription below...  rewrite as tweetNYPLImage? or, initialTweet / replyTweet?
 // and then call tweetStreetview separately, with multiple toBase64 calls?
 function tweetImageAndDescription(imageURL, text) {
-  // also need to pass in test description here?
-  // MPM instead, return toBase64(url) to .then off of this thing and call it again
-  console.log('made it inside of tweetImage');
   return toBase64(imageURL)
   .then(data => uploadAndPostMedia(data, text))
-  // .then(tweet => console.log('access tweetID here?????????', tweet.id_str))
   .catch(err => console.error(err));
 }
 
@@ -191,7 +184,6 @@ function tweetImageAndDescription(imageURL, text) {
 // });
 
 function sendTwoTweets(content) {
-  // save tweet data up here
   console.log('inside sendTwoTweets');
   let image = content.imageURL;
   let caption = content.title + ' ' + content.itemLink;
@@ -200,19 +192,16 @@ function sendTwoTweets(content) {
   // also, instead of just tweeting one streetview image, generate a set of 5-6???
   let streetview = content.streetviewURL;
   tweetImageAndDescription(image, caption)
-  .then(tweet => {
+  .then(response => {
     // reply to tweetID... except doesn't seem like tweetID is the right value here
-    console.log('sending second tweet, would be in reply to:', tweet.id_str);
-    tweetImageAndDescription(streetview, content.title);
+    console.log('second tweet would be in reply to??????', response.data);
+    // tweetImageAndDescription(streetview, content.title);
   });
-  // the second tweetImage is resolving before the first...
-  // wrapping it in anonymous function to fix race condition?
 }
 
 // wrap this in a function to call daily?
 generateTweetData()
 .then(tweetData => {
-  console.log('tweet data', tweetData);
   let imageURL = `https://images.nypl.org/index.php?id=${tweetData.imageID}&t=w`;
   let title = tweetData.title;
   let itemLink = tweetData.itemLink;
