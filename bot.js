@@ -106,21 +106,9 @@ function checkLocation(record) {
   }
 }
 
-function processRecord(record) {
-  let recordURL = record.itemLink;
-  let imageURL = `https://images.nypl.org/index.php?id=${record.imageID}&t=w`;
-  let text = record.title;
-  let location = record.geocode;
-  // let streetview = ??
-  let tweetData = {recordURL, imageURL, text, location};
-  console.log('omfg made it:', tweetData);
-  return tweetData;
-}
-
 function generateTweetData() {
   return getRandomRecord()
   .then(record => checkLocation(record))
-  // .then(record => processRecord(record))
   // .catch(err => console.log('Error generating Tweet data:', err));
 }
 
@@ -140,8 +128,6 @@ function toBase64(url) {
     return response.buffer();
   })
   .then(function(buffer) {
-    // console.log('buffer?', buffer);
-    // the hardest buffer to buffer
     return Buffer.from(buffer).toString('base64');
   })
   .catch(err => console.error(err));
@@ -149,13 +135,16 @@ function toBase64(url) {
 
 // rename this: something like, postNYPLImageToTwitter?
 // and combine these two parameters into one record?
+//
 function uploadAndPostMedia(media, text) {
-  Twitter.post('media/upload', { media_data: media }, function (err, data, response) {
+  return Twitter.post('media/upload', { media_data: media }, function (err, data, response) {
     if (err) console.error('Error processing upload: ', err);
     let mediaID = data.media_id_string;
     let altText = text; // MPM: pull alt text from image description
     let metadata = { media_id: mediaID, alt_text: { text: altText } };
 
+    // skip this metadata function?
+    // in addition to grabbing each media ID, push them to array of media IDs???
     Twitter.post('media/metadata/create', metadata, function (err, data, response) {
       if (!err) {
         // now post a tweet with reference to the media (media will attach to the tweet)
@@ -165,6 +154,10 @@ function uploadAndPostMedia(media, text) {
         Twitter.post('statuses/update', params, function (err, data, response) {
           if (err) console.error('Error posting status/update: ', err);
           console.log('I just tweeted:', data.text);
+          // console.log('*****data from tweet:', data);
+          // MPM can we access tweet ID in here for reply???
+          // use ID string just in case they convert to alphanumeric
+          return data.id_str;
         });
       }
     });
@@ -172,8 +165,10 @@ function uploadAndPostMedia(media, text) {
 }
 
 // write a separate version of 'upload and post' function for Streetview data
+// in_reply_to_status_id
 
-// or rewrite as tweetNYPLImage
+
+// rewrite as tweetNYPLImage? or, initialTweet / replyTweet?
 // and then call tweetStreetview separately, with multiple toBase64 calls?
 function tweetImageAndDescription(imageURL, text) {
   // also need to pass in test description here?
@@ -181,6 +176,7 @@ function tweetImageAndDescription(imageURL, text) {
   console.log('made it inside of tweetImage');
   return toBase64(imageURL)
   .then(data => uploadAndPostMedia(data, text))
+  // .then(tweet => console.log('access tweetID here?????????', tweet.id_str))
   .catch(err => console.error(err));
 }
 
@@ -188,23 +184,29 @@ function tweetImageAndDescription(imageURL, text) {
 /*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*/
 
 // send first tweet! for now, alternating between 'Testing, testing...' and 'Oh, hey world!'
-Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
-  console.log('Posting our first Tweet...!');
-  if (err) console.error(err);
-  console.log('I just tweeted: ', data.text);
-});
+// Twitter.post('statuses/update', { status: 'Oh, hey world!' }, function(err, data, response) {
+//   console.log('Posting our first Tweet...!');
+//   if (err) console.error(err);
+//   console.log('I just tweeted: ', data.text);
+// });
 
 function sendTwoTweets(content) {
   // save tweet data up here
   console.log('inside sendTwoTweets');
   let image = content.imageURL;
-  let caption = content.title + ' ' + content.itemLink; // add an oldNYC hashtag here?
+  let caption = content.title + ' ' + content.itemLink;
+  // add an oldNYC hashtag here? or in entities.hashtags (array)??
   // and then make a separate caption for streetview images / reply to older Tweet??
   // also, instead of just tweeting one streetview image, generate a set of 5-6???
   let streetview = content.streetviewURL;
   tweetImageAndDescription(image, caption)
-  .then(tweetImageAndDescription(streetview, content.title));
+  .then(tweet => {
+    // reply to tweetID... except doesn't seem like tweetID is the right value here
+    console.log('sending second tweet, would be in reply to:', tweet.id_str);
+    tweetImageAndDescription(streetview, content.title);
+  });
   // the second tweetImage is resolving before the first...
+  // wrapping it in anonymous function to fix race condition?
 }
 
 // wrap this in a function to call daily?
